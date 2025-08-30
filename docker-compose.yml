@@ -1,0 +1,32 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: todo-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: todo-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+  test-backend:
+    build:
+      context: ./backend
+    command: ["pytest", "tests"]
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - backend
+    environment:
+      - PYTHONPATH=/app
