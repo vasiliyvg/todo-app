@@ -92,13 +92,22 @@ Then run all tests from the `backend/tests` directory:
 pytest backend/tests
 ```
 
+---
+
+## Start the application and run tests using Docker
+
+```
+docker compose up -d backend frontend
+docker compose run --rm backend python -m pytest tests -v
+docker compose down
+```
+
 ## Notes
 
 - The backend uses in-memory storage (todos are lost when the server restarts).
 - For production, consider adding a database (e.g., SQLite, PostgreSQL).
 - CORS is enabled for `http://localhost:3000` by default.
 - Add authentication (basic)
-- Add containarization
 
 ---
 
