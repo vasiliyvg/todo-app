@@ -36,7 +36,7 @@ A simple full-stack Todo List app built with FastAPI (backend) and React (fronte
 
 3. **Install dependencies:**
    ```bash
-   pip install -r requirements.txt
+   pip3 install -r requirements.txt
    ```
 
 5. **Run the FastAPI server:**
@@ -84,9 +84,24 @@ A simple full-stack Todo List app built with FastAPI (backend) and React (fronte
 
 ---
 
+## Running Tests
+
+Then run all tests from the `backend/tests` directory:
+
+```bash
+pytest backend/tests
+```
+
 ## Notes
 
 - The backend uses in-memory storage (todos are lost when the server restarts).
 - For production, consider adding a database (e.g., SQLite, PostgreSQL).
 - CORS is enabled for `http://localhost:3000` by default.
 - Add authentication (basic)
+- Add containarization
+
+---
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

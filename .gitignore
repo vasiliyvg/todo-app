@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.env
+*.venv
+venv/
+env/
+ENV/
+*.egg
+*.egg-info/
+dist/
+build/
+*.log
+*.sqlite3
+*.db
+*.coverage
+.coverage.*
+.cache/
+.pytest_cache/
+.mypy_cache/
+*.pot
+*.mo
+
+# FastAPI/Uvicorn
+instance/
+*.pid
+
+# VSCode
+.vscode/
+
+# React/Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+build/
+dist/
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# TypeScript
+*.tsbuildinfo
+
+# MacOS
+.DS_Store
+
+# Misc
+*.swp
+*.swo
