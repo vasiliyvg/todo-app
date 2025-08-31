@@ -1,22 +1,25 @@
-FROM node:20-alpine
+FROM node:20-alpine AS development
 
 # Set working directory
 WORKDIR /app
 
-# Install dependencies
+# Install dependencies (including dev dependencies for tests)
 COPY package.json package-lock.json* ./
-RUN npm install --production
+RUN npm install  # Remove --production flag to include dev deps
 
 # Copy application code
 COPY . .
 
-# Build React app
+# This stage can be used for development and testing
+
+# Build stage
+FROM development AS build
 RUN npm run build
 
-# Use nginx to serve static files
-FROM nginx:alpine
-COPY --from=0 /app/build /usr/share/nginx/html
+# # Production stage
+# FROM nginx:alpine AS production
+# COPY --from=build /app/build /usr/share/nginx/html
 
-EXPOSE 80
+# EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+# CMD ["nginx", "-g", "daemon off;"]
