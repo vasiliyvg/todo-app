@@ -86,10 +86,16 @@ A simple full-stack Todo List app built with FastAPI (backend) and React (fronte
 
 ## Running Tests
 
-Then run all tests from the `backend/tests` directory:
+Run all tests from the `backend` directory:
 
 ```bash
-pytest backend/tests
+pytest tests
+```
+
+Run all tests from the `frontend` directory:
+
+```bash
+npm test -- --watchAll=false
 ```
 
 ---
@@ -99,6 +105,7 @@ pytest backend/tests
 ```
 docker compose up -d backend frontend
 docker compose run --rm backend python -m pytest tests -v
+docker compose run --rm frontend npm test -- --watchAll=false 
 docker compose down
 ```
 

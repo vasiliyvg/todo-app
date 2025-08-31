@@ -19,14 +19,3 @@ services:
       - "3000:80"
     depends_on:
       - backend
-
-  test-backend:
-    build:
-      context: ./backend
-    command: ["pytest", "tests"]
-    volumes:
-      - ./backend:/app
-    depends_on:
-      - backend
-    environment:
-      - PYTHONPATH=/app
