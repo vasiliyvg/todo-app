@@ -9,7 +9,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.ext.asyncio import create_async_engine
 from datetime import datetime
-from .settings import settings
+from settings import settings
 
 engine = create_async_engine(settings.DATABASE_URL)
 metadata = MetaData()
