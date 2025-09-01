@@ -3,7 +3,7 @@ name: Build, Test and Package
 on:
   pull_request:
     branches:
-      - master
+      - main
 
 jobs:
   build-test-package:
