@@ -28,8 +28,8 @@ jobs:
       - name: Package Docker images
         run: |
           mkdir -p release
-          docker save todo-app_backend:latest > release/backend.tar
-          docker save todo-app_frontend:latest > release/frontend.tar
+          docker save todo-app-backend:latest > release/backend.tar
+          docker save todo-app-frontend:latest > release/frontend.tar
           tar -czf todo-app-${{ steps.version.outputs.VERSION }}.tar.gz release
 
       - name: Upload application artifact
