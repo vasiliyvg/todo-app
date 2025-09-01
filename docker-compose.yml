@@ -1,4 +1,16 @@
 services:
+  postgres:
+    image: postgres:13
+    container_name: todo-postgres
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=tododb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   backend:
     build:
       context: ./backend
@@ -10,6 +22,10 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app
+      - STORAGE_TYPE=postgres
+      - DATABASE_URL=postgresql+asyncpg://user:password@postgres/tododb
+    depends_on:
+      - postgres
 
   frontend:
     build:
@@ -19,3 +35,6 @@ services:
       - "3000:80"
     depends_on:
       - backend
+
+volumes:
+  postgres_data:

@@ -3,7 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 from datetime import datetime
 
-from models import Todo, TodoCreate, TodoUpdate
+from .models import Todo, TodoCreate, TodoUpdate
+from .settings import settings
+from .database import engine, todos, create_db_and_tables
 
 app = FastAPI(title="Todo API", version="1.0.0")
 
@@ -16,9 +18,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# In-memory storage
+# In-memory storage for "in_memory" mode
 todos_db: List[Todo] = []
 next_id = 1
+
+@app.on_event("startup")
+async def startup():
+    if settings.STORAGE_TYPE == "postgres":
+        await create_db_and_tables()
 
 @app.get("/")
 async def root():
@@ -26,53 +33,93 @@ async def root():
 
 @app.get("/todos", response_model=List[Todo])
 async def get_todos():
-    return todos_db
+    if settings.STORAGE_TYPE == "postgres":
+        async with engine.connect() as conn:
+            result = await conn.execute(todos.select())
+            return result.mappings().all()
+    else:
+        return todos_db
 
 @app.get("/todos/{todo_id}", response_model=Todo)
 async def get_todo(todo_id: int):
-    todo = next((t for t in todos_db if t.id == todo_id), None)
-    if not todo:
-        raise HTTPException(status_code=404, detail="Todo not found")
-    return todo
+    if settings.STORAGE_TYPE == "postgres":
+        async with engine.connect() as conn:
+            result = await conn.execute(todos.select().where(todos.c.id == todo_id))
+            todo = result.mappings().first()
+            if not todo:
+                raise HTTPException(status_code=404, detail="Todo not found")
+            return todo
+    else:
+        todo = next((t for t in todos_db if t.id == todo_id), None)
+        if not todo:
+            raise HTTPException(status_code=404, detail="Todo not found")
+        return todo
 
-@app.post("/todos", response_model=Todo)
+@app.post("/todos", response_model=Todo, status_code=201)
 async def create_todo(todo_create: TodoCreate):
-    global next_id
-    now = datetime.now()
-    new_todo = Todo(
-        id=next_id,
-        title=todo_create.title,
-        completed=False,
-        created_at=now,
-        updated_at=now
-    )
-    todos_db.append(new_todo)
-    next_id += 1
-    return new_todo
+    now = datetime.utcnow()
+    if settings.STORAGE_TYPE == "postgres":
+        async with engine.connect() as conn:
+            query = todos.insert().values(title=todo_create.title, completed=False, created_at=now, updated_at=now)
+            result = await conn.execute(query)
+            await conn.commit()
+            new_id = result.inserted_primary_key[0]
+            return await get_todo(new_id)
+    else:
+        global next_id
+        new_todo = Todo(
+            id=next_id,
+            title=todo_create.title,
+            completed=False,
+            created_at=now,
+            updated_at=now
+        )
+        todos_db.append(new_todo)
+        next_id += 1
+        return new_todo
 
 @app.put("/todos/{todo_id}", response_model=Todo)
 async def update_todo(todo_id: int, todo_update: TodoUpdate):
-    todo = next((t for t in todos_db if t.id == todo_id), None)
-    if not todo:
-        raise HTTPException(status_code=404, detail="Todo not found")
-    
-    update_data = todo_update.dict(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(todo, field, value)
-    
-    todo.updated_at = datetime.now()
-    return todo
+    now = datetime.utcnow()
+    if settings.STORAGE_TYPE == "postgres":
+        async with engine.connect() as conn:
+            update_data = todo_update.dict(exclude_unset=True)
+            update_data["updated_at"] = now
+            query = todos.update().where(todos.c.id == todo_id).values(**update_data)
+            result = await conn.execute(query)
+            await conn.commit()
+            if result.rowcount == 0:
+                raise HTTPException(status_code=404, detail="Todo not found")
+            return await get_todo(todo_id)
+    else:
+        todo = next((t for t in todos_db if t.id == todo_id), None)
+        if not todo:
+            raise HTTPException(status_code=404, detail="Todo not found")
+        
+        update_data = todo_update.dict(exclude_unset=True)
+        for field, value in update_data.items():
+            setattr(todo, field, value)
+        
+        todo.updated_at = now
+        return todo
 
-@app.delete("/todos/{todo_id}")
+@app.delete("/todos/{todo_id}", status_code=204)
 async def delete_todo(todo_id: int):
-    global todos_db
-    todo = next((t for t in todos_db if t.id == todo_id), None)
-    if not todo:
-        raise HTTPException(status_code=404, detail="Todo not found")
-    
-    todos_db = [t for t in todos_db if t.id != todo_id]
-    return {"message": "Todo deleted successfully"}
+    if settings.STORAGE_TYPE == "postgres":
+        async with engine.connect() as conn:
+            query = todos.delete().where(todos.c.id == todo_id)
+            result = await conn.execute(query)
+            await conn.commit()
+            if result.rowcount == 0:
+                raise HTTPException(status_code=404, detail="Todo not found")
+    else:
+        global todos_db
+        todo = next((t for t in todos_db if t.id == todo_id), None)
+        if not todo:
+            raise HTTPException(status_code=404, detail="Todo not found")
+        todos_db = [t for t in todos_db if t.id != todo_id]
+    return
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

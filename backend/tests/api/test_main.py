@@ -1,70 +1,89 @@
-import unittest
+import pytest
 from fastapi.testclient import TestClient
-from main import app
+from httpx import AsyncClient
 
-class TestTodoAPI(unittest.TestCase):
-    def setUp(self):
-        self.client = TestClient(app)
+from ...main import app
+from ...database import metadata, engine
 
-    def test_root(self):
-        response = self.client.get("/")
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"message": "Todo API is running"})
 
-    def test_create_todo(self):
-        response = self.client.post("/todos", json={"title": "Test Todo"})
-        self.assertEqual(response.status_code, 200)
-        data = response.json()
-        self.assertEqual(data["title"], "Test Todo")
-        self.assertFalse(data["completed"])
-        self.assertIn("id", data)
-        self.assertIn("created_at", data)
-        self.assertIn("updated_at", data)
+@pytest.fixture(scope="function", autouse=True)
+async def setup_database():
+    async with engine.begin() as conn:
+        await conn.run_sync(metadata.create_all)
+    yield
+    async with engine.begin() as conn:
+        await conn.run_sync(metadata.drop_all)
 
-    def test_get_todos(self):
-        # Create a todo first
-        self.client.post("/todos", json={"title": "Another Todo"})
-        response = self.client.get("/todos")
-        self.assertEqual(response.status_code, 200)
-        todos = response.json()
-        self.assertTrue(isinstance(todos, list))
-        self.assertGreaterEqual(len(todos), 1)
 
-    def test_get_todo(self):
-        # Create a todo and get its id
-        create_resp = self.client.post("/todos", json={"title": "Find Me"})
-        todo_id = create_resp.json()["id"]
-        response = self.client.get(f"/todos/{todo_id}")
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["title"], "Find Me")
+@pytest.fixture(scope="function")
+def client():
+    return TestClient(app)
 
-    def test_get_todo_not_found(self):
-        response = self.client.get("/todos/99999")
-        self.assertEqual(response.status_code, 404)
-        self.assertEqual(response.json()["detail"], "Todo not found")
 
-    def test_update_todo(self):
-        create_resp = self.client.post("/todos", json={"title": "To Update"})
-        todo_id = create_resp.json()["id"]
-        response = self.client.put(f"/todos/{todo_id}", json={"title": "Updated", "completed": True})
-        self.assertEqual(response.status_code, 200)
-        data = response.json()
-        self.assertEqual(data["title"], "Updated")
-        self.assertTrue(data["completed"])
+def test_root(client):
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.json() == {"message": "Todo API is running"}
 
-    def test_update_todo_not_found(self):
-        response = self.client.put("/todos/99999", json={"title": "Nope"})
-        self.assertEqual(response.status_code, 404)
-        self.assertEqual(response.json()["detail"], "Todo not found")
 
-    def test_delete_todo(self):
-        create_resp = self.client.post("/todos", json={"title": "To Delete"})
-        todo_id = create_resp.json()["id"]
-        response = self.client.delete(f"/todos/{todo_id}")
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["message"], "Todo deleted successfully")
+def test_create_todo(client):
+    response = client.post("/todos", json={"title": "Test Todo"})
+    assert response.status_code == 201
+    data = response.json()
+    assert data["title"] == "Test Todo"
+    assert not data["completed"]
+    assert "id" in data
 
-    def test_delete_todo_not_found(self):
-        response = self.client.delete("/todos/99999")
-        self.assertEqual(response.status_code, 404)
-        self.assertEqual(response.json()["detail"], "Todo not found")
+
+def test_get_todos(client):
+    client.post("/todos", json={"title": "Todo 1"})
+    client.post("/todos", json={"title": "Todo 2"})
+    response = client.get("/todos")
+    assert response.status_code == 200
+    todos = response.json()
+    assert isinstance(todos, list)
+    assert len(todos) == 2
+
+
+def test_get_todo(client):
+    create_resp = client.post("/todos", json={"title": "Find Me"})
+    todo_id = create_resp.json()["id"]
+    response = client.get(f"/todos/{todo_id}")
+    assert response.status_code == 200
+    assert response.json()["title"] == "Find Me"
+
+
+def test_get_todo_not_found(client):
+    response = client.get("/todos/99999")
+    assert response.status_code == 404
+
+
+def test_update_todo(client):
+    create_resp = client.post("/todos", json={"title": "To Update"})
+    todo_id = create_resp.json()["id"]
+    response = client.put(f"/todos/{todo_id}", json={"title": "Updated", "completed": True})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["title"] == "Updated"
+    assert data["completed"]
+
+
+def test_update_todo_not_found(client):
+    response = client.put("/todos/99999", json={"title": "Nope"})
+    assert response.status_code == 404
+
+
+def test_delete_todo(client):
+    create_resp = client.post("/todos", json={"title": "To Delete"})
+    todo_id = create_resp.json()["id"]
+    response = client.delete(f"/todos/{todo_id}")
+    assert response.status_code == 204
+
+    # Verify it's gone
+    get_resp = client.get(f"/todos/{todo_id}")
+    assert get_resp.status_code == 404
+
+
+def test_delete_todo_not_found(client):
+    response = client.delete("/todos/99999")
+    assert response.status_code == 404
