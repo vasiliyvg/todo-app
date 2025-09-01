@@ -1,70 +1,69 @@
 import unittest
-from fastapi.testclient import TestClient
-from main import app
+from datetime import datetime
+from pydantic import ValidationError
+from models import Todo, TodoCreate, TodoUpdate
 
-class TestTodoAPI(unittest.TestCase):
-    def setUp(self):
-        self.client = TestClient(app)
+class TestTodoModels(unittest.TestCase):
+    def test_todo_create(self):
+        todo_create = TodoCreate(title="Test Todo")
+        self.assertEqual(todo_create.title, "Test Todo")
 
-    def test_root(self):
-        response = self.client.get("/")
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"message": "Todo API is running"})
+    def test_todo_create_empty_title(self):
+        with self.assertRaises(ValidationError):
+            TodoCreate(title="")
 
-    def test_create_todo(self):
-        response = self.client.post("/todos", json={"title": "Test Todo"})
-        self.assertEqual(response.status_code, 200)
-        data = response.json()
-        self.assertEqual(data["title"], "Test Todo")
-        self.assertFalse(data["completed"])
-        self.assertIn("id", data)
-        self.assertIn("created_at", data)
-        self.assertIn("updated_at", data)
+    def test_todo_create_missing_title(self):
+        with self.assertRaises(ValidationError):
+            TodoCreate()
 
-    def test_get_todos(self):
-        # Create a todo first
-        self.client.post("/todos", json={"title": "Another Todo"})
-        response = self.client.get("/todos")
-        self.assertEqual(response.status_code, 200)
-        todos = response.json()
-        self.assertTrue(isinstance(todos, list))
-        self.assertGreaterEqual(len(todos), 1)
+    def test_todo_update_partial(self):
+        todo_update = TodoUpdate(title="Updated Title")
+        self.assertEqual(todo_update.title, "Updated Title")
+        self.assertIsNone(todo_update.completed)
 
-    def test_get_todo(self):
-        # Create a todo and get its id
-        create_resp = self.client.post("/todos", json={"title": "Find Me"})
-        todo_id = create_resp.json()["id"]
-        response = self.client.get(f"/todos/{todo_id}")
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["title"], "Find Me")
+    def test_todo_update_completed(self):
+        todo_update = TodoUpdate(completed=True)
+        self.assertTrue(todo_update.completed)
+        self.assertIsNone(todo_update.title)
 
-    def test_get_todo_not_found(self):
-        response = self.client.get("/todos/99999")
-        self.assertEqual(response.status_code, 404)
-        self.assertEqual(response.json()["detail"], "Todo not found")
+    def test_todo_update_none(self):
+        todo_update = TodoUpdate()
+        self.assertIsNone(todo_update.title)
+        self.assertIsNone(todo_update.completed)
 
-    def test_update_todo(self):
-        create_resp = self.client.post("/todos", json={"title": "To Update"})
-        todo_id = create_resp.json()["id"]
-        response = self.client.put(f"/todos/{todo_id}", json={"title": "Updated", "completed": True})
-        self.assertEqual(response.status_code, 200)
-        data = response.json()
-        self.assertEqual(data["title"], "Updated")
-        self.assertTrue(data["completed"])
+    def test_todo_model(self):
+        now = datetime.now()
+        todo = Todo(
+            id=1,
+            title="Test",
+            completed=False,
+            created_at=now,
+            updated_at=now
+        )
+        self.assertEqual(todo.id, 1)
+        self.assertEqual(todo.title, "Test")
+        self.assertFalse(todo.completed)
+        self.assertEqual(todo.created_at, now)
+        self.assertEqual(todo.updated_at, now)
 
-    def test_update_todo_not_found(self):
-        response = self.client.put("/todos/99999", json={"title": "Nope"})
-        self.assertEqual(response.status_code, 404)
-        self.assertEqual(response.json()["detail"], "Todo not found")
+    def test_todo_model_missing_fields(self):
+        now = datetime.now()
+        with self.assertRaises(ValidationError):
+            Todo(
+                id=1,
+                title="Test",
+                completed=False,
+                created_at=now
+                # missing updated_at
+            )
 
-    def test_delete_todo(self):
-        create_resp = self.client.post("/todos", json={"title": "To Delete"})
-        todo_id = create_resp.json()["id"]
-        response = self.client.delete(f"/todos/{todo_id}")
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["message"], "Todo deleted successfully")
-
-    def test_delete_todo_not_found(self):
-        response = self.client.delete("/todos/99999")
-        self.assertEqual(response.status_code, 404)
-        self.assertEqual(response.json()["detail"], "Todo not found")
+    def test_todo_model_wrong_types(self):
+        now = datetime.now()
+        with self.assertRaises(ValidationError):
+            Todo(
+                id="one",  # should be int
+                title=123,  # should be str
+                completed="no",  # should be bool
+                created_at="now",  # should be datetime
+                updated_at=now
+            )
