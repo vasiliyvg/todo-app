@@ -2,8 +2,8 @@ name: Build, Test and Package
 
 on:
   pull_request:
-    types: [closed]
-    branches: [ master ]
+    branches:
+      - master
 
 jobs:
   build-test-package:
