@@ -4,6 +4,7 @@ from datetime import datetime
 
 class TodoCreate(BaseModel):
     title: str
+    type: Optional[str] = "todo"
 
     @field_validator('title')
     def title_must_not_be_empty(cls, v):
@@ -21,6 +22,7 @@ class Todo(BaseModel):
     completed: bool
     created_at: datetime
     updated_at: datetime
+    type: str
 
     class Config:
         from_attributes = True

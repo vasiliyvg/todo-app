@@ -10,6 +10,12 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d myapp"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   backend:
     build:
@@ -25,7 +31,9 @@ services:
       - STORAGE_TYPE=postgres
       - DATABASE_URL=postgresql+asyncpg://user:password@postgres/tododb
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
 
   frontend:
     build:
@@ -39,7 +47,7 @@ services:
       - /app/node_modules
     environment:
       - CHOKIDAR_USEPOLLING=true
-      - REACT_APP_TIMELINE_FEATURE_FLAG=false
+      - REACT_APP_TIMELINE_FEATURE_FLAG=true
     command: npm start
     depends_on:
       - backend

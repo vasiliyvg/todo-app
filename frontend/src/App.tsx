@@ -77,6 +77,9 @@ const App: React.FC = () => {
 
   const timelineEnabled = process.env.REACT_APP_TIMELINE_FEATURE_FLAG === 'true';
 
+  const todoItems = todos.filter(todo => todo.type === 'todo');
+  const timelineItems = todos.filter(todo => todo.type === 'timeline');
+
   return (
     <div className="app-container">
       <Tabs>
@@ -88,14 +91,14 @@ const App: React.FC = () => {
         <TabPanel>
           <TodoForm addTodo={addTodo} />
           <TodoList
-            todos={todos}
+            todos={todoItems}
             toggleComplete={toggleComplete}
             deleteTodo={deleteTodo}
           />
         </TabPanel>
         {timelineEnabled && (
           <TabPanel>
-            <TimelineComponent />
+            <TimelineComponent todos={timelineItems} />
           </TabPanel>
         )}
       </Tabs>

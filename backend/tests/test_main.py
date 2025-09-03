@@ -38,13 +38,15 @@ class TestTodoModels(unittest.TestCase):
             title="Test",
             completed=False,
             created_at=now,
-            updated_at=now
+            updated_at=now,
+            type="todo"
         )
         self.assertEqual(todo.id, 1)
         self.assertEqual(todo.title, "Test")
         self.assertFalse(todo.completed)
         self.assertEqual(todo.created_at, now)
         self.assertEqual(todo.updated_at, now)
+        self.assertEqual(todo.type, "todo")
 
     def test_todo_model_missing_fields(self):
         now = datetime.now()
@@ -55,6 +57,7 @@ class TestTodoModels(unittest.TestCase):
                 completed=False,
                 created_at=now
                 # missing updated_at
+                # missing type
             )
 
     def test_todo_model_wrong_types(self):
@@ -65,8 +68,6 @@ class TestTodoModels(unittest.TestCase):
                 title=123,  # should be str
                 completed="no",  # should be bool
                 created_at="now",  # should be datetime
-                updated_at=now
+                updated_at=now,
+                type=456  # should be str
             )
-
-if __name__ == "__main__":
-    unittest.main()

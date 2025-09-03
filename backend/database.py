@@ -22,6 +22,7 @@ todos = Table(
     Column("completed", Boolean, default=False, nullable=False),
     Column("created_at", DateTime, default=datetime.utcnow, nullable=False),
     Column("updated_at", DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False),
+    Column("type", String, default="todo", nullable=False),
 )
 
 async def create_db_and_tables():
