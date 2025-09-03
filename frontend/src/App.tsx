@@ -75,16 +75,17 @@ const App: React.FC = () => {
     return <div style={{ color: 'red' }}>Error: {error}</div>;
   }
 
+  const timelineEnabled = process.env.REACT_APP_TIMELINE_FEATURE_FLAG === 'true';
+
   return (
     <div className="app-container">
       <Tabs>
         <TabList>
           <Tab>To-Do List</Tab>
-          <Tab>Timeline</Tab>
+          {timelineEnabled && <Tab>Timeline</Tab>}
         </TabList>
 
         <TabPanel>
-          <h1>To-Do List</h1>
           <TodoForm addTodo={addTodo} />
           <TodoList
             todos={todos}
@@ -92,9 +93,11 @@ const App: React.FC = () => {
             deleteTodo={deleteTodo}
           />
         </TabPanel>
-        <TabPanel>
-          <TimelineComponent />
-        </TabPanel>
+        {timelineEnabled && (
+          <TabPanel>
+            <TimelineComponent />
+          </TabPanel>
+        )}
       </Tabs>
     </div>
   );
