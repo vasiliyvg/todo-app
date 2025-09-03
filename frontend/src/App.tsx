@@ -3,6 +3,9 @@ import { Todo } from './types/todo';
 import TodoList from './components/TodoList';
 import TodoForm from './components/TodoForm';
 import * as api from './services/api'; // Import the new API service
+import TimelineComponent from './components/Timeline';
+import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
+import 'react-tabs/style/react-tabs.css';
 import './App.css';
 
 const App: React.FC = () => {
@@ -74,13 +77,25 @@ const App: React.FC = () => {
 
   return (
     <div className="app-container">
-      <h1>To-Do List</h1>
-      <TodoForm addTodo={addTodo} />
-      <TodoList
-        todos={todos}
-        toggleComplete={toggleComplete}
-        deleteTodo={deleteTodo}
-      />
+      <Tabs>
+        <TabList>
+          <Tab>To-Do List</Tab>
+          <Tab>Timeline</Tab>
+        </TabList>
+
+        <TabPanel>
+          <h1>To-Do List</h1>
+          <TodoForm addTodo={addTodo} />
+          <TodoList
+            todos={todos}
+            toggleComplete={toggleComplete}
+            deleteTodo={deleteTodo}
+          />
+        </TabPanel>
+        <TabPanel>
+          <TimelineComponent />
+        </TabPanel>
+      </Tabs>
     </div>
   );
 };
