@@ -1,4 +1,4 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import App from './App';
 import * as api from './services/api';
 import { Todo } from './types/todo';
@@ -57,8 +57,10 @@ describe('App Component', () => {
     await waitFor(() => expect(screen.queryByText(/Loading.../i)).not.toBeInTheDocument());
 
     const input = screen.getByPlaceholderText(/Add a new task/i);
-    fireEvent.change(input, { target: { value: 'New Todo' } });
-    fireEvent.submit(input.closest('form')!);
+    await act(async () => {
+      fireEvent.change(input, { target: { value: 'New Todo' } });
+      fireEvent.submit(input.closest('form')!);
+    });
 
     await waitFor(() => {
       expect(screen.getByText('New Todo')).toBeInTheDocument();
@@ -75,7 +77,9 @@ describe('App Component', () => {
     await waitFor(() => expect(screen.getByText('Test Todo')).toBeInTheDocument());
 
     const checkbox = screen.getByRole('checkbox');
-    fireEvent.click(checkbox);
+    await act(async () => {
+      fireEvent.click(checkbox);
+    });
 
     await waitFor(() => {
       expect(api.updateTodo).toHaveBeenCalled();
@@ -89,7 +93,9 @@ describe('App Component', () => {
     await waitFor(() => expect(screen.getByText('Test Todo')).toBeInTheDocument());
 
     const deleteButton = screen.getByRole('button', { name: /delete/i });
-    fireEvent.click(deleteButton);
+    await act(async () => {
+      fireEvent.click(deleteButton);
+    });
 
     await waitFor(() => {
       expect(api.deleteTodo).toHaveBeenCalledWith(1);
@@ -104,8 +110,10 @@ describe('App Component', () => {
     await waitFor(() => expect(screen.queryByText(/Loading.../i)).not.toBeInTheDocument());
 
     const input = screen.getByPlaceholderText(/Add a new task/i);
-    fireEvent.change(input, { target: { value: 'Fail Todo' } });
-    fireEvent.submit(input.closest('form')!);
+    await act(async () => {
+      fireEvent.change(input, { target: { value: 'Fail Todo' } });
+      fireEvent.submit(input.closest('form')!);
+    });
 
     await waitFor(() => {
       expect(screen.getByText(/Failed to add todo/i)).toBeInTheDocument();
