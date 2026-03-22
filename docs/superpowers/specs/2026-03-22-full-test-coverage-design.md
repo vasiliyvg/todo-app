@@ -27,7 +27,7 @@
 **Mocking:** `jest.fn()` for callbacks; `global.fetch` mock for `api.ts`
 
 ### `src/components/TodoItem.test.tsx`
-- Renders todo item text
+- Renders todo item title (`todo.title`)
 - Renders checkbox as unchecked when `completed: false`
 - Renders checkbox as checked when `completed: true`
 - Applies line-through style when completed
@@ -37,7 +37,7 @@
 ### `src/components/TodoList.test.tsx`
 - Renders the correct number of `TodoItem` components
 - Renders nothing (empty list) when `todos` is an empty array
-- Passes `toggleComplete` and `deleteTodo` callbacks to each item
+- Passes `toggleComplete` and `deleteTodo` callbacks to each item — verified behaviorally (click an item's checkbox/delete button and confirm the mock was called), not by prop inspection
 
 ### `src/components/TodoForm.test.tsx`
 - Renders a text input and a type selector
@@ -45,14 +45,19 @@
 - Clears the text input after successful submission
 - Does not call `addTodo` when the text input is empty
 
+> **Note:** `TodoForm` calls `addTodo(text, type)` (two arguments). However, `App.tsx` currently wires `addTodo` as a one-argument function, so the `type` argument passed from the form is silently dropped at the integration boundary. Tests for `TodoForm` in isolation are still valid — they verify the component's own contract. This pre-existing inconsistency in production code is out of scope for this work.
+
 ### `src/components/Timeline.test.tsx`
 - Renders without crashing with an empty todos array
-- Renders the correct number of timeline entries for todos of type `"timeline"`
+- Renders the correct number of timeline entries for each todo in the passed array (the component does not filter by type internally — filtering happens in `App.tsx` before the prop is passed in)
 - Renders todo titles in the timeline
 
 ### `src/services/api.test.ts`
+
+> **Note:** `addTodo` in `api.ts` accepts only one argument: `addTodo(text: string)`. It sends `{ title: text }` with no `type` field. Tests must match this actual signature.
+
 - `getTodos()` — calls `GET /todos`, returns parsed JSON
-- `addTodo(text, type)` — calls `POST /todos` with correct body and headers, returns created todo
+- `addTodo(text)` — calls `POST /todos` with correct body (`{ title: text }`) and headers, returns created todo
 - `updateTodo(id, fields)` — calls `PUT /todos/{id}` with correct body, returns updated todo
 - `deleteTodo(id)` — calls `DELETE /todos/{id}`
 - Each function: rejects on non-ok HTTP response
@@ -64,7 +69,12 @@
 **Tech:** pytest + FastAPI `TestClient`
 **Storage:** `STORAGE_TYPE=memory` (in-memory, no database required)
 
+### State isolation
+`main.py` uses module-level globals `todos_db` and `next_id`. Without resetting them between tests, tests will be order-dependent. Each test must use a `pytest` fixture that resets these via **module-attribute assignment** — i.e. `import main; main.todos_db = []; main.next_id = 1` — not `from main import todos_db; todos_db = []`, which rebinds a local name and leaves the module's global unchanged.
+
 ### `backend/tests/test_endpoints.py`
+
+All paths below are relative to the repo root.
 
 #### Health check
 - `GET /` returns 200
@@ -95,7 +105,7 @@
 
 ## File Summary
 
-| New file | Tests |
+| New file (path relative to repo root) | Tests |
 |---|---|
 | `frontend/src/components/TodoItem.test.tsx` | 6 |
 | `frontend/src/components/TodoList.test.tsx` | 3 |
