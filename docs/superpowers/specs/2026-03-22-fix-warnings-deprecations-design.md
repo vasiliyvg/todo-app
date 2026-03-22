@@ -13,6 +13,23 @@ Fix all warnings and deprecations in our own source code. No library upgrades. N
 
 Replace deprecated Pydantic V2 inner `class Config` with `model_config`:
 
+Two changes in this file:
+
+**1. `@field_validator` missing `@classmethod`** — Pydantic V2 requires validators to be explicit classmethods:
+
+```python
+# Before
+@field_validator('title')
+def title_must_not_be_empty(cls, v):
+
+# After
+@field_validator('title')
+@classmethod
+def title_must_not_be_empty(cls, v):
+```
+
+**2. `class Config` → `model_config`**
+
 Add `ConfigDict` to the existing pydantic import on line 1 (replace, don't add a second import line):
 
 ```python
