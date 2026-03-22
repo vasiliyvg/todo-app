@@ -14,6 +14,7 @@ const mockTodos: Todo[] = [
     completed: false,
     created_at: '2024-08-31T12:00:00Z',
     updated_at: '2024-08-31T12:00:00Z',
+    type: 'todo',
   },
 ];
 

@@ -3,6 +3,9 @@ import { Todo } from './types/todo';
 import TodoList from './components/TodoList';
 import TodoForm from './components/TodoForm';
 import * as api from './services/api'; // Import the new API service
+import TimelineComponent from './components/Timeline';
+import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
+import 'react-tabs/style/react-tabs.css';
 import './App.css';
 
 const App: React.FC = () => {
@@ -72,15 +75,33 @@ const App: React.FC = () => {
     return <div style={{ color: 'red' }}>Error: {error}</div>;
   }
 
+  const timelineEnabled = process.env.REACT_APP_TIMELINE_FEATURE_FLAG === 'true';
+
+  const todoItems = todos.filter(todo => todo.type === 'todo');
+  const timelineItems = todos.filter(todo => todo.type === 'timeline');
+
   return (
     <div className="app-container">
-      <h1>To-Do List</h1>
-      <TodoForm addTodo={addTodo} />
-      <TodoList
-        todos={todos}
-        toggleComplete={toggleComplete}
-        deleteTodo={deleteTodo}
-      />
+      <Tabs>
+        <TabList>
+          <Tab>To-Do List</Tab>
+          {timelineEnabled && <Tab>Timeline</Tab>}
+        </TabList>
+
+        <TabPanel>
+          <TodoForm addTodo={addTodo} />
+          <TodoList
+            todos={todoItems}
+            toggleComplete={toggleComplete}
+            deleteTodo={deleteTodo}
+          />
+        </TabPanel>
+        {timelineEnabled && (
+          <TabPanel>
+            <TimelineComponent todos={timelineItems} />
+          </TabPanel>
+        )}
+      </Tabs>
     </div>
   );
 };

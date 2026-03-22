@@ -1,0 +1,118 @@
+# Test Coverage Design — Todo App
+
+**Date:** 2026-03-22
+**Goal:** Achieve ~80% unit test coverage across frontend (React/TypeScript) and backend (FastAPI/Python).
+**Approach:** Add dedicated test files per module (Option A — fill gaps file by file). No production code changes.
+
+---
+
+## Scope
+
+### In scope
+- Frontend: `TodoItem`, `TodoList`, `TodoForm`, `Timeline` components and `api.ts` service
+- Backend: all 5 FastAPI endpoints in `main.py`
+
+### Out of scope
+- Fixing the known Timeline rendering bug (tests cover current behavior only)
+- Integration or end-to-end tests
+- `database.py` and `settings.py` (thin wrappers around SQLAlchemy/pydantic-settings internals)
+- `App.tsx` (already covered by existing integration-style tests in `App.test.tsx`)
+- `models.py` (already covered in `test_main.py`)
+
+---
+
+## Frontend
+
+**Tech:** Jest + React Testing Library (already configured via react-scripts)
+**Mocking:** `jest.fn()` for callbacks; `global.fetch` mock for `api.ts`
+
+### `src/components/TodoItem.test.tsx`
+- Renders todo item title (`todo.title`)
+- Renders checkbox as unchecked when `completed: false`
+- Renders checkbox as checked when `completed: true`
+- Applies line-through style when completed
+- Calls `toggleComplete` with the correct todo id on checkbox click
+- Calls `deleteTodo` with the correct todo id on delete button click
+
+### `src/components/TodoList.test.tsx`
+- Renders the correct number of `TodoItem` components
+- Renders nothing (empty list) when `todos` is an empty array
+- Passes `toggleComplete` and `deleteTodo` callbacks to each item — verified behaviorally (click an item's checkbox/delete button and confirm the mock was called), not by prop inspection
+
+### `src/components/TodoForm.test.tsx`
+- Renders a text input and a type selector
+- Calls `addTodo` with the entered text and selected type on submit
+- Clears the text input after successful submission
+- Does not call `addTodo` when the text input is empty
+
+> **Note:** `TodoForm` calls `addTodo(text, type)` (two arguments). However, `App.tsx` currently wires `addTodo` as a one-argument function, so the `type` argument passed from the form is silently dropped at the integration boundary. Tests for `TodoForm` in isolation are still valid — they verify the component's own contract. This pre-existing inconsistency in production code is out of scope for this work.
+
+### `src/components/Timeline.test.tsx`
+- Renders without crashing with an empty todos array
+- Renders the correct number of timeline entries for each todo in the passed array (the component does not filter by type internally — filtering happens in `App.tsx` before the prop is passed in)
+- Renders todo titles in the timeline
+
+### `src/services/api.test.ts`
+
+> **Note:** `addTodo` in `api.ts` accepts only one argument: `addTodo(text: string)`. It sends `{ title: text }` with no `type` field. Tests must match this actual signature.
+
+- `getTodos()` — calls `GET /todos`, returns parsed JSON
+- `addTodo(text)` — calls `POST /todos` with correct body (`{ title: text }`) and headers, returns created todo
+- `updateTodo(id, fields)` — calls `PUT /todos/{id}` with correct body, returns updated todo
+- `deleteTodo(id)` — calls `DELETE /todos/{id}`
+- Each function: rejects on non-ok HTTP response
+
+---
+
+## Backend
+
+**Tech:** pytest + FastAPI `TestClient`
+**Storage:** `STORAGE_TYPE=memory` (in-memory, no database required)
+
+### State isolation
+`main.py` uses module-level globals `todos_db` and `next_id`. Without resetting them between tests, tests will be order-dependent. Each test must use a `pytest` fixture that resets these via **module-attribute assignment** — i.e. `import main; main.todos_db = []; main.next_id = 1` — not `from main import todos_db; todos_db = []`, which rebinds a local name and leaves the module's global unchanged.
+
+### `backend/tests/test_endpoints.py`
+
+All paths below are relative to the repo root.
+
+#### Health check
+- `GET /` returns 200
+
+#### `GET /todos`
+- Returns empty list initially
+- Returns list of todos after one is created
+
+#### `POST /todos`
+- Creates a todo with default type `"todo"`
+- Creates a todo with explicit type `"timeline"`
+- Returns 422 for missing `title` field
+
+#### `GET /todos/{id}`
+- Returns the correct todo by id
+- Returns 404 for an unknown id
+
+#### `PUT /todos/{id}`
+- Updates `completed` status
+- Updates `title`
+- Returns 404 for an unknown id
+
+#### `DELETE /todos/{id}`
+- Deletes the todo successfully
+- Returns 404 for an unknown id
+
+---
+
+## File Summary
+
+| New file (path relative to repo root) | Tests |
+|---|---|
+| `frontend/src/components/TodoItem.test.tsx` | 6 |
+| `frontend/src/components/TodoList.test.tsx` | 3 |
+| `frontend/src/components/TodoForm.test.tsx` | 4 |
+| `frontend/src/components/Timeline.test.tsx` | 3 |
+| `frontend/src/services/api.test.ts` | 9 |
+| `backend/tests/test_endpoints.py` | 13 |
+
+**Total new tests: ~38**
+**Estimated coverage after implementation: ~80%+**

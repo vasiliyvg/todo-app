@@ -67,8 +67,9 @@ async def get_todo(todo_id: int, conn: AsyncConnection = Depends(get_db_conn)):
 @app.post("/todos", response_model=Todo, status_code=201)
 async def create_todo(todo_create: TodoCreate, conn: AsyncConnection = Depends(get_db_conn)):
     now = datetime.utcnow()
+    todo_type = todo_create.type if todo_create.type else "todo"
     if settings.STORAGE_TYPE == "postgres":
-        query = todos.insert().values(title=todo_create.title, completed=False, created_at=now, updated_at=now)
+        query = todos.insert().values(title=todo_create.title, completed=False, created_at=now, updated_at=now, type=todo_type)
         result = await conn.execute(query)
         await conn.commit()
         new_id = result.inserted_primary_key[0]
@@ -80,7 +81,8 @@ async def create_todo(todo_create: TodoCreate, conn: AsyncConnection = Depends(g
             title=todo_create.title,
             completed=False,
             created_at=now,
-            updated_at=now
+            updated_at=now,
+            type=todo_type
         )
         todos_db.append(new_todo)
         next_id += 1
