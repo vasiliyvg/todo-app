@@ -8,7 +8,7 @@ from sqlalchemy import (
     DateTime,
 )
 from sqlalchemy.ext.asyncio import create_async_engine
-from datetime import datetime
+from datetime import datetime, timezone
 from settings import settings
 
 engine = create_async_engine(settings.DATABASE_URL)
@@ -20,8 +20,8 @@ todos = Table(
     Column("id", Integer, primary_key=True),
     Column("title", String, nullable=False),
     Column("completed", Boolean, default=False, nullable=False),
-    Column("created_at", DateTime, default=datetime.utcnow, nullable=False),
-    Column("updated_at", DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False),
+    Column("created_at", DateTime, default=lambda: datetime.now(timezone.utc), nullable=False),
+    Column("updated_at", DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False),
     Column("type", String, default="todo", nullable=False),
 )
 

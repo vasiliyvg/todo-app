@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, ConfigDict
 from typing import Optional
 from datetime import datetime
 
@@ -7,6 +7,7 @@ class TodoCreate(BaseModel):
     type: Optional[str] = "todo"
 
     @field_validator('title')
+    @classmethod
     def title_must_not_be_empty(cls, v):
         if not v or not v.strip():
             raise ValueError('Title must not be empty')
@@ -24,5 +25,4 @@ class Todo(BaseModel):
     updated_at: datetime
     type: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
