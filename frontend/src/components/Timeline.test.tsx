@@ -22,9 +22,9 @@ describe('TimelineComponent', () => {
   test('renders correct number of timeline entries for each todo in the passed array', () => {
     const todos = [makeTodo(1, 'Event A'), makeTodo(2, 'Event B'), makeTodo(3, 'Event C')];
     render(<TimelineComponent todos={todos} />);
-    // Each entry renders the title once (inside the circular marker)
-    // Use selector: 'span' to avoid matching both the span and its parent div (which has the same text content)
-    expect(screen.getAllByText(/Event [ABC]/, { selector: 'span' })).toHaveLength(3);
+    // Each entry renders the title once (below the date in the content area)
+    // Use selector: 'p' to avoid matching parent elements with the same text content
+    expect(screen.getAllByText(/Event [ABC]/, { selector: 'p' })).toHaveLength(3);
   });
 
   test('renders todo titles in the timeline', () => {
