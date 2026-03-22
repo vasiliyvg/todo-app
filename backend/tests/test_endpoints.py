@@ -12,11 +12,18 @@ async def mock_db_conn():
 
 @pytest.fixture(autouse=True)
 def reset_state():
-    """Override DB dependency and reset in-memory globals before each test."""
+    """Override DB dependency and reset in-memory globals before each test.
+
+    Force STORAGE_TYPE=in_memory so routes use the in-memory path regardless
+    of the environment variable injected by docker-compose (STORAGE_TYPE=postgres).
+    """
+    original_storage_type = main_module.settings.STORAGE_TYPE
+    main_module.settings.STORAGE_TYPE = 'in_memory'
     app.dependency_overrides[get_db_conn] = mock_db_conn
     main_module.todos_db = []
     main_module.next_id = 1
     yield
+    main_module.settings.STORAGE_TYPE = original_storage_type
     app.dependency_overrides.clear()
     main_module.todos_db = []
     main_module.next_id = 1
