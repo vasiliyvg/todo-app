@@ -13,14 +13,21 @@ Fix all warnings and deprecations in our own source code. No library upgrades. N
 
 Replace deprecated Pydantic V2 inner `class Config` with `model_config`:
 
+Add `ConfigDict` to the existing pydantic import on line 1 (replace, don't add a second import line):
+
+```python
+# Line 1 after change
+from pydantic import BaseModel, field_validator, ConfigDict
+```
+
+Replace the inner class on the `Todo` model:
+
 ```python
 # Before
 class Config:
     from_attributes = True
 
-# After
-from pydantic import BaseModel, field_validator, ConfigDict
-...
+# After (class-level attribute, no inner class)
 model_config = ConfigDict(from_attributes=True)
 ```
 
@@ -60,6 +67,8 @@ Wrap `fireEvent` calls that trigger async state updates in `act(async () => { ..
 
 `act` is already exported by `@testing-library/react` — add to existing import.
 
+Multi-event example (`adds a todo`, `shows error if addTodo fails`):
+
 ```tsx
 // Before
 fireEvent.change(input, { target: { value: 'New Todo' } });
@@ -70,6 +79,20 @@ await waitFor(() => { ... });
 await act(async () => {
   fireEvent.change(input, { target: { value: 'New Todo' } });
   fireEvent.submit(input.closest('form')!);
+});
+await waitFor(() => { ... });
+```
+
+Single-event example (`toggles todo completion`, `deletes a todo`):
+
+```tsx
+// Before
+fireEvent.click(checkbox);
+await waitFor(() => { ... });
+
+// After
+await act(async () => {
+  fireEvent.click(checkbox);
 });
 await waitFor(() => { ... });
 ```
