@@ -30,7 +30,7 @@ describe('TodoList', () => {
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
   });
 
-  test('passes callbacks to each item — verified by clicking first and second item', () => {
+  test('calls toggleComplete with the correct todo id for each item', () => {
     const todos = [makeTodo(1, 'First'), makeTodo(2, 'Second')];
     render(<TodoList todos={todos} toggleComplete={toggleComplete} deleteTodo={deleteTodo} />);
     const checkboxes = screen.getAllByRole('checkbox');
@@ -38,5 +38,13 @@ describe('TodoList', () => {
     expect(toggleComplete).toHaveBeenCalledWith(1);
     fireEvent.click(checkboxes[1]);
     expect(toggleComplete).toHaveBeenCalledWith(2);
+  });
+
+  test('calls deleteTodo with the correct todo id when delete button is clicked', () => {
+    const todos = [makeTodo(1, 'First'), makeTodo(2, 'Second')];
+    render(<TodoList todos={todos} toggleComplete={toggleComplete} deleteTodo={deleteTodo} />);
+    const deleteButtons = screen.getAllByRole('button', { name: /delete/i });
+    fireEvent.click(deleteButtons[0]);
+    expect(deleteTodo).toHaveBeenCalledWith(1);
   });
 });
