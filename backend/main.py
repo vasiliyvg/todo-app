@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
-from datetime import datetime
+from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -66,7 +66,7 @@ async def get_todo(todo_id: int, conn: AsyncConnection = Depends(get_db_conn)):
 
 @app.post("/todos", response_model=Todo, status_code=201)
 async def create_todo(todo_create: TodoCreate, conn: AsyncConnection = Depends(get_db_conn)):
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     todo_type = todo_create.type if todo_create.type else "todo"
     if settings.STORAGE_TYPE == "postgres":
         query = todos.insert().values(title=todo_create.title, completed=False, created_at=now, updated_at=now, type=todo_type)
@@ -90,7 +90,7 @@ async def create_todo(todo_create: TodoCreate, conn: AsyncConnection = Depends(g
 
 @app.put("/todos/{todo_id}", response_model=Todo)
 async def update_todo(todo_id: int, todo_update: TodoUpdate, conn: AsyncConnection = Depends(get_db_conn)):
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if settings.STORAGE_TYPE == "postgres":
         update_data = todo_update.model_dump(exclude_unset=True)
         update_data["updated_at"] = now
