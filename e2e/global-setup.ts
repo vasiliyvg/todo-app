@@ -20,7 +20,9 @@ async function waitForService(url: string, label: string): Promise<void> {
     } catch {
       // not ready yet — swallow and retry
     }
-    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+    if (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+    }
   }
   throw new Error(`[global-setup] Timed out after ${TIMEOUT_MS}ms waiting for ${label} at ${url}`);
 }
@@ -46,19 +48,21 @@ export default async function globalSetup(_config: FullConfig) {
   fs.mkdirSync(path.dirname(AUTH_FILE), { recursive: true });
 
   const browser = await chromium.launch();
-  const context = await browser.newContext();
-  const page = await context.newPage();
+  try {
+    const context = await browser.newContext();
+    const page = await context.newPage();
 
-  await page.goto(FRONTEND_URL);
-  await page.getByPlaceholder('Username').fill(TEST_USER.username);
-  await page.getByPlaceholder('Password').fill(TEST_USER.password);
-  await page.getByRole('button', { name: 'Log In' }).click();
+    await page.goto(FRONTEND_URL);
+    await page.getByPlaceholder('Username').fill(TEST_USER.username);
+    await page.getByPlaceholder('Password').fill(TEST_USER.password);
+    await page.getByRole('button', { name: 'Log In' }).click();
 
-  // Wait until past the auth gate
-  await page.getByPlaceholder('Add a new task...').waitFor({ timeout: 15_000 });
+    await page.getByPlaceholder('Add a new task...').waitFor({ timeout: 15_000 });
 
-  await context.storageState({ path: AUTH_FILE });
-  await browser.close();
+    await context.storageState({ path: AUTH_FILE });
+  } finally {
+    await browser.close();
+  }
 
   console.log('[global-setup] storageState saved to', AUTH_FILE);
 }
