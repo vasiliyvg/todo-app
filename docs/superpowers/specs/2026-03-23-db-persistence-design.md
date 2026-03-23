@@ -37,17 +37,41 @@ Two changes:
 
 ### `backend/tests/test_endpoints.py`
 
-Replace the current fixture with one that uses a real Postgres connection:
+Replace the current fixture with one that uses a real Postgres connection. asyncpg connection pools are event-loop-bound, so a test-only engine with `NullPool` is used — each call opens and closes a fresh connection, making it safe to call from `asyncio.run()` across multiple tests without pool/loop conflicts:
 
 ```python
+import asyncio
+from sqlalchemy import text
+from sqlalchemy.pool import NullPool
+from sqlalchemy.ext.asyncio import create_async_engine
+from database import metadata
+from settings import settings
+
+# Test-only engine: NullPool avoids asyncpg pool-per-event-loop issues
+# when asyncio.run() is called repeatedly from sync pytest fixtures.
+test_engine = create_async_engine(settings.DATABASE_URL, poolclass=NullPool)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def create_tables():
+    """Create the todos table once before any test runs."""
+    async def setup():
+        async with test_engine.begin() as conn:
+            await conn.run_sync(metadata.create_all)
+    asyncio.run(setup())
+
+
 @pytest.fixture(autouse=True)
 def reset_state():
     """Truncate todos table before each test for isolation."""
-    with engine.connect() as conn:  # sync connect for simplicity in fixture
-        conn.execute(text("TRUNCATE TABLE todos RESTART IDENTITY"))
-        conn.commit()
+    async def truncate():
+        async with test_engine.begin() as conn:
+            await conn.execute(text("TRUNCATE TABLE todos RESTART IDENTITY"))
+    asyncio.run(truncate())
     yield
 ```
+
+Note: `get_db_conn` and `AsyncConnection` in `main.py` remain untouched — they are the Postgres path, not dead code. The app's production `engine` (with pooling) is unaffected; `test_engine` is only used in the test fixtures.
 
 Remove the `AsyncMock` import, `mock_db_conn`, and all `main_module.todos_db` / `main_module.next_id` / `main_module.settings.STORAGE_TYPE` manipulation.
 
@@ -56,6 +80,10 @@ The 13 test cases (assertions, inputs, expected status codes) are unchanged.
 ### `backend/requirements.txt`
 
 No changes — `asyncpg` and `SQLAlchemy` are already present.
+
+## Developer Workflow Note
+
+Removing `STORAGE_TYPE` means running `uvicorn main:app` directly (without Docker) will attempt to connect to Postgres immediately via `create_db_and_tables()`. Without a local Postgres instance, startup will fail. The supported local dev workflow remains `docker compose up`, same as today.
 
 ## Testing Strategy
 
