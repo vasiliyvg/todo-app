@@ -51,3 +51,6 @@ dist/
 # Misc
 *.swp
 *.swo
+
+# Git worktrees
+.worktrees/
