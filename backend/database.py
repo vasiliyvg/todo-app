@@ -20,8 +20,8 @@ todos = Table(
     Column("id", Integer, primary_key=True),
     Column("title", String, nullable=False),
     Column("completed", Boolean, default=False, nullable=False),
-    Column("created_at", DateTime, default=lambda: datetime.now(timezone.utc), nullable=False),
-    Column("updated_at", DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False),
+    Column("created_at", DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False),
+    Column("updated_at", DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False),
     Column("type", String, default="todo", nullable=False),
 )
 

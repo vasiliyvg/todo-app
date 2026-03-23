@@ -1,35 +1,44 @@
+import asyncio
 import pytest
 import main as main_module
-from unittest.mock import AsyncMock
+import database as database_module
 from fastapi.testclient import TestClient
-from main import app, get_db_conn
+from sqlalchemy import text
+from sqlalchemy.pool import NullPool
+from sqlalchemy.ext.asyncio import create_async_engine
+from database import metadata
+from settings import settings
+from main import app
+
+# Test-only engine: NullPool avoids asyncpg pool-per-event-loop issues
+# when asyncio.run() is called repeatedly from sync pytest fixtures.
+test_engine = create_async_engine(settings.DATABASE_URL, poolclass=NullPool)
+
+# Patch both the database module and main module engine references to use NullPool
+# so that asyncpg connections are not reused across different event loops.
+database_module.engine = test_engine
+main_module.engine = test_engine
+
+client = TestClient(app)
 
 
-async def mock_db_conn():
-    """Override get_db_conn to avoid real Postgres connections in unit tests."""
-    yield AsyncMock()
+@pytest.fixture(scope="session", autouse=True)
+def create_tables():
+    """Create the todos table once before any test runs."""
+    async def setup():
+        async with test_engine.begin() as conn:
+            await conn.run_sync(metadata.create_all)
+    asyncio.run(setup())
 
 
 @pytest.fixture(autouse=True)
 def reset_state():
-    """Override DB dependency and reset in-memory globals before each test.
-
-    Force STORAGE_TYPE=in_memory so routes use the in-memory path regardless
-    of the environment variable injected by docker-compose (STORAGE_TYPE=postgres).
-    """
-    original_storage_type = main_module.settings.STORAGE_TYPE
-    main_module.settings.STORAGE_TYPE = 'in_memory'
-    app.dependency_overrides[get_db_conn] = mock_db_conn
-    main_module.todos_db = []
-    main_module.next_id = 1
+    """Truncate todos table before each test for isolation."""
+    async def truncate():
+        async with test_engine.begin() as conn:
+            await conn.execute(text("TRUNCATE TABLE todos RESTART IDENTITY"))
+    asyncio.run(truncate())
     yield
-    main_module.settings.STORAGE_TYPE = original_storage_type
-    app.dependency_overrides.clear()
-    main_module.todos_db = []
-    main_module.next_id = 1
-
-
-client = TestClient(app)
 
 
 class TestHealthCheck:
