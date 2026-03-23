@@ -11,7 +11,8 @@ export class TodoPage {
       await this.page.getByRole('combobox').selectOption('timeline');
     }
     await this.page.getByRole('button', { name: 'Add' }).click();
-    // Reset select back to 'todo' for next call (avoids state leaking between actions)
+    // Wait for the item to appear before resetting select to avoid race condition
+    await this.page.getByPlaceholder('Add a new task...').waitFor({ state: 'visible' });
     if (type === 'timeline') {
       await this.page.getByRole('combobox').selectOption('todo');
     }
@@ -54,5 +55,9 @@ export class TodoPage {
 
   async logout() {
     await this.page.getByRole('button', { name: 'Logout' }).click();
+  }
+
+  async expectFormVisible() {
+    await expect(this.page.getByPlaceholder('Add a new task...')).toBeVisible();
   }
 }

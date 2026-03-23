@@ -21,10 +21,6 @@ export class AuthPage {
     await expect(this.page.locator('.auth-error')).toHaveText(message);
   }
 
-  async expectTodoFormVisible() {
-    await expect(this.page.getByPlaceholder('Add a new task...')).toBeVisible();
-  }
-
   async expectAuthFormVisible() {
     await expect(this.page.getByPlaceholder('Username')).toBeVisible();
   }

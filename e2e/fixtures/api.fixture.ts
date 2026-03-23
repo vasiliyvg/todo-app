@@ -52,15 +52,22 @@ export class ApiFixture {
     if (!res.ok) throw new Error(`clearTodos list failed: ${res.status}`);
     const todos: TodoItem[] = await res.json();
     for (const todo of todos) {
-      await fetch(`${BACKEND_URL}/todos/${todo.id}`, {
+      const deleteRes = await fetch(`${BACKEND_URL}/todos/${todo.id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (!deleteRes.ok) {
+        throw new Error(`clearTodos delete ${todo.id} failed: ${deleteRes.status}`);
+      }
     }
   }
 
+  /**
+   * Registers a new user and returns their JWT token.
+   * Note: this token belongs to the new user, NOT to TEST_USER.
+   * ApiFixture.createTodo/clearTodos continue to use TEST_USER's token.
+   */
   async registerUser(username: string, password: string): Promise<string> {
-    // Returns JWT token for the new user
     const res = await fetch(`${BACKEND_URL}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

@@ -1,8 +1,6 @@
 // e2e/fixtures/auth.fixture.ts
 import { test as base, BrowserContext, Page } from '@playwright/test';
-import * as path from 'path';
-
-const AUTH_FILE = path.join(__dirname, '../.auth/user.json');
+import { AUTH_FILE } from '../test-constants';
 
 type AuthFixtures = {
   authenticatedPage: Page;
@@ -18,7 +16,7 @@ export const test = base.extend<AuthFixtures>({
   authenticatedPage: async ({ authenticatedContext }, use) => {
     const page = await authenticatedContext.newPage();
     await use(page);
-    await page.close();
+    await page.close(); // explicit close before context ensures proper Playwright teardown ordering
   },
 });
 
