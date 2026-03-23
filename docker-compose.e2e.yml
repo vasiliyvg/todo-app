@@ -1,4 +1,7 @@
 # docker-compose.e2e.yml
+
+# NOTE: This stack uses the same host ports as docker-compose.yml (3000, 8000, 5432).
+# Stop the dev stack first before starting this one: docker compose down
 services:
   postgres_e2e:
     image: postgres:13
