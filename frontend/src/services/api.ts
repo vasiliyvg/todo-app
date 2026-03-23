@@ -20,11 +20,16 @@ export const getTodos = async (token: string, onUnauthorized?: () => void): Prom
   return await response.json();
 };
 
-export const addTodo = async (text: string, token: string, onUnauthorized?: () => void): Promise<Todo> => {
+export const addTodo = async (
+  text: string,
+  token: string,
+  onUnauthorized?: () => void,
+  type: string = 'todo',
+): Promise<Todo> => {
   const response = await fetch(`${API_URL}/todos`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
-    body: JSON.stringify({ title: text }),
+    body: JSON.stringify({ title: text, type }),
   });
   if (response.status === 401) {
     onUnauthorized?.();

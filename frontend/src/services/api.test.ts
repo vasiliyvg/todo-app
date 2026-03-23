@@ -47,7 +47,7 @@ describe('addTodo', () => {
     expect(mockFetch).toHaveBeenCalledWith('http://127.0.0.1:8000/todos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...AUTH_HEADER },
-      body: JSON.stringify({ title: 'Test' }),
+      body: JSON.stringify({ title: 'Test', type: 'todo' }),
     });
     expect(result).toEqual(mockTodo);
   });
