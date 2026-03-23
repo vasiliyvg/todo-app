@@ -43,7 +43,8 @@ form {
   align-items: stretch;
 }
 
-input[type="text"] {
+input[type="text"],
+input[type="password"] {
   flex: 1;
   padding: 14px 18px;
   border: 2px solid #e1e8ed;
@@ -54,14 +55,16 @@ input[type="text"] {
   outline: none;
 }
 
-input[type="text"]:focus {
+input[type="text"]:focus,
+input[type="password"]:focus {
   border-color: #667eea;
   background-color: #ffffff;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
   transform: translateY(-1px);
 }
 
-input[type="text"]::placeholder {
+input[type="text"]::placeholder,
+input[type="password"]::placeholder {
   color: #8e9aaf;
 }
 
@@ -179,6 +182,85 @@ button.delete:hover {
   background-color: #f8f9fa;
   border-radius: 12px;
   border: 2px dashed #dee2e6;
+}
+
+/* Auth card */
+.auth-container {
+  background-color: #ffffff;
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1), 0 6px 20px rgba(0, 0, 0, 0.05);
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+}
+
+.auth-container h2 {
+  color: #2c3e50;
+  margin: 0 0 28px;
+  font-size: 1.8rem;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.auth-form input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.auth-error {
+  color: #e74c3c;
+  font-size: 14px;
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  background-color: #fdf0ef;
+  border-radius: 8px;
+  border: 1px solid #f5c6c2;
+}
+
+.auth-switch-btn {
+  background: transparent;
+  color: #667eea;
+  box-shadow: none;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border: 2px solid #667eea;
+  margin-top: 4px;
+}
+
+.auth-switch-btn:hover {
+  background: rgba(102, 126, 234, 0.06);
+  box-shadow: none;
+  transform: none;
+}
+
+/* Logout button */
+.logout-btn {
+  background: transparent;
+  color: #6c757d;
+  box-shadow: none;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 16px;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  min-width: unset;
+}
+
+.logout-btn:hover {
+  background: #f8f9fa;
+  color: #2c3e50;
+  box-shadow: none;
+  transform: none;
+  border-color: #adb5bd;
 }
 
 /* Responsive design */

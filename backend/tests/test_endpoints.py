@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime, timezone
 import pytest
 import main as main_module
 import database as database_module
@@ -9,22 +10,27 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from database import metadata
 from settings import settings
 from main import app
+from auth import get_current_user
 
 # Test-only engine: NullPool avoids asyncpg pool-per-event-loop issues
-# when asyncio.run() is called repeatedly from sync pytest fixtures.
 test_engine = create_async_engine(settings.DATABASE_URL, poolclass=NullPool)
 
-# Patch both the database module and main module engine references to use NullPool
-# so that asyncpg connections are not reused across different event loops.
 database_module.engine = test_engine
 main_module.engine = test_engine
+
+TEST_USER = {"id": 1, "username": "testuser", "hashed_password": "x", "created_at": datetime.now(timezone.utc)}
+
+
+async def mock_get_current_user():
+    return TEST_USER
+
 
 client = TestClient(app)
 
 
 @pytest.fixture(scope="session", autouse=True)
 def create_tables():
-    """Create the todos table once before any test runs."""
+    """Create all tables once before any test runs."""
     async def setup():
         async with test_engine.begin() as conn:
             await conn.run_sync(metadata.create_all)
@@ -33,12 +39,18 @@ def create_tables():
 
 @pytest.fixture(autouse=True)
 def reset_state():
-    """Truncate todos table before each test for isolation."""
-    async def truncate():
+    """Set dependency override, truncate todos + users (CASCADE), re-insert test user."""
+    # Set override per-test so it doesn't bleed into test_auth.py
+    app.dependency_overrides[get_current_user] = mock_get_current_user
+    async def setup():
         async with test_engine.begin() as conn:
-            await conn.execute(text("TRUNCATE TABLE todos RESTART IDENTITY"))
-    asyncio.run(truncate())
+            await conn.execute(text("TRUNCATE TABLE todos, users RESTART IDENTITY CASCADE"))
+            await conn.execute(
+                text("INSERT INTO users (id, username, hashed_password, created_at) VALUES (1, 'testuser', 'x', NOW())")
+            )
+    asyncio.run(setup())
     yield
+    app.dependency_overrides.pop(get_current_user, None)
 
 
 class TestHealthCheck:
