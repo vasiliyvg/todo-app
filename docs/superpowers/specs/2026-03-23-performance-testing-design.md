@@ -28,25 +28,29 @@ performance/
     stress.js        # ramp 1→200→0 VUs, 10min — find degradation point
     soak.js          # 20 VUs steady, 30min — memory leaks / connection exhaustion
     spike.js         # 0→500→0 VUs, 2min — resilience under sudden burst
-  thresholds/
-    ci.json          # strict: p95 < 500ms, error rate < 1%, checks > 99%
-    local.json       # relaxed: p95 < 1s
   reports/           # gitignored — JSON + HTML output
-  docker-compose.perf.yml   # full stack + k6 runner
-  run.sh             # ./run.sh <scenario> [BASE_URL]
-  README.md
+  docker-compose.perf.yml   # full stack (dedicated perf DB) + k6 runner
+  run.sh             # ./run.sh <scenario> [BASE_URL] — propagates k6 exit code
+  README.md          # includes warnings for resource-intensive scenarios
 .github/workflows/perf.yml
 ```
+
+> Note: No `thresholds/` directory — thresholds are embedded inside each scenario's `options` export and switched via `__ENV.CI` environment variable (see Thresholds section).
 
 ---
 
 ## Shared Library Design
 
 ### `lib/auth.js`
-Handles per-VU user lifecycle. Each VU registers a unique test user (e.g., `user_perf_<vuId>`) and logs in once during the VU init stage. The token is reused across all iterations for that VU — mirroring real user behavior.
+Handles per-VU user lifecycle. Each VU calls `registerAndLogin(baseUrl, vuId)` at the **start of its first `default()` iteration** (guarded by a flag in VU state). This function:
+1. Sends `POST /auth/register` with JSON body `{ username: "user_perf_<vuId>", password: "..." }`
+2. Sends `POST /auth/login` with **`application/x-www-form-urlencoded`** body (`username=...&password=...`) — required because the backend uses FastAPI's `OAuth2PasswordRequestForm`
+3. Returns the JWT token, stored in VU scope and reused for all subsequent iterations
+
+> Important: Registration uses JSON; login uses form encoding. These two endpoints have different `Content-Type` requirements.
 
 ### `lib/client.js`
-Thin wrapper around k6's `http` module. Pre-sets the `Authorization: Bearer <token>` header and base URL. All scenarios import this instead of using raw `http` calls, ensuring consistent headers and default response checks.
+Thin wrapper around k6's `http` module. Pre-sets the `Authorization: Bearer <token>` header and base URL. All scenarios import this instead of using raw `http` calls.
 
 ### `lib/data.js`
 Generates deterministic todo payloads using `vuId` and iteration index to ensure unique titles across parallel VUs. Prevents unique constraint violations and data collisions during concurrent runs.
@@ -57,12 +61,28 @@ Generates deterministic todo payloads using `vuId` and iteration index to ensure
 
 | Stage | Function | Purpose |
 |---|---|---|
-| Init | VU-level code (top of file) | Each VU registers its own user and logs in; token stored in VU scope |
-| Setup | `setup()` | Global one-time prep (shared test data if needed in future) |
-| Test loop | `default(data)` | CRUD operations only — no auth overhead in measurements |
-| Teardown | `teardown(data)` | Delete test users and todos created during the run |
+| Default (first iter) | `default()` with VU-scope guard | Each VU registers its own user and logs in; token stored in VU variable. HTTP is only permitted here, not in the init stage. |
+| Test loop | `default()` subsequent iterations | CRUD operations only — no auth overhead in measurements |
+| Teardown | `teardown()` | Cleans up todos created during the run (see Database Isolation below) |
 
-This ensures registration and login costs are completely excluded from latency measurements.
+> Note: k6's init stage (top-level script code) **prohibits HTTP requests**. All network calls must be inside `default()` or `teardown()`. `setup()` is omitted — there is no global shared state needed at this stage.
+
+---
+
+## Database Isolation
+
+`docker-compose.perf.yml` uses a **dedicated `postgres_perf` service** with database `tododb_perf` — separate from the development `postgres` service. This follows the same pattern as `docker-compose.e2e.yml`.
+
+**Why:** Running against the shared dev database would pollute it with perf test users and todos.
+
+**Test user cleanup:** The backend has no admin delete-user endpoint. Test users (created with username pattern `user_perf_<vuId>`) are not deleted. Todos are also not deleted — k6's `teardown()` runs in a separate context after all VUs finish and has no access to VU-scoped todo IDs, making reliable per-todo cleanup impractical without a shared-state mechanism.
+
+This is acceptable because:
+- The `postgres_perf` database is ephemeral — its volume can be pruned between local profiling sessions with `docker compose -f docker-compose.perf.yml down -v`
+- CI always starts with a fresh `postgres_perf` container (no persistent volume between runs)
+- `teardown()` is omitted entirely; the function does not exist in scenario scripts
+
+**Repeated local runs:** `lib/auth.js` must handle `POST /auth/register` returning `409 Conflict` (username already taken from a prior run). When a 409 is received, the function skips registration and proceeds directly to login. This allows local reruns against a persistent perf volume without manual cleanup.
 
 ---
 
@@ -82,6 +102,8 @@ All scenarios execute the same per-iteration user journey:
 | `soak` | 20 steady | 30min | Detect memory leaks, connection exhaustion |
 | `spike` | 0→500→0 | 2min | Resilience under sudden burst |
 
+> **Warning:** `stress` and `spike` scenarios are resource-intensive. They should be run on a server or CI environment with adequate resources, not on a developer laptop. See README for guidance.
+
 ---
 
 ## Assertions: Checks + Thresholds
@@ -95,34 +117,73 @@ check(response, {
   'title matches':   (r) => r.json('title') === payload.title,
 });
 ```
-Auth endpoints also check token presence and format.
+Auth endpoints check for token presence and correct response shape.
 
 ### Thresholds (aggregate pass/fail gates)
-Defined in `thresholds/ci.json`, applied in CI:
-- `http_req_duration p(95) < 500ms`
-- `http_req_failed rate < 1%`
-- `checks pass rate > 99%`
+Thresholds are embedded in each scenario's exported `options` object. Strict (CI) vs. relaxed (local) values are selected via the `__ENV.CI` environment variable:
 
-Relaxed values in `thresholds/local.json` for developer machines.
+```js
+export const options = {
+  thresholds: {
+    http_req_duration: [__ENV.CI ? 'p(95)<500' : 'p(95)<1000'],
+    http_req_failed:   [__ENV.CI ? 'rate<0.01' : 'rate<0.05'],
+    checks:            [__ENV.CI ? 'rate>0.99' : 'rate>0.95'],
+  },
+};
+```
+
+CI sets `--env CI=true`. Local runs omit it, getting relaxed values.
 
 ---
 
 ## Infrastructure
 
+### k6 Version
+Both `docker-compose.perf.yml` and `perf.yml` pin to `grafana/k6:0.54.0` to ensure reproducible behavior.
+
 ### Local run via Docker Compose
-`docker-compose.perf.yml` extends the existing `docker-compose.yml`, adding a k6 service that targets the backend container directly:
+`docker-compose.perf.yml` defines a dedicated perf stack with its own database:
 
 ```yaml
 services:
+  postgres_perf:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=tododb_perf
+    volumes:
+      - postgres_perf_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d tododb_perf"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  backend_perf:
+    build:
+      context: ./backend
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://user:password@postgres_perf/tododb_perf
+      - SECRET_KEY=perf-test-secret-key
+    depends_on:
+      postgres_perf:
+        condition: service_healthy
+
   k6:
-    image: grafana/k6
+    image: grafana/k6:0.54.0
     volumes:
       - ./performance:/scripts
+      - ./performance/reports:/reports
     environment:
-      - BASE_URL=http://backend:8000
-    command: run /scripts/scenarios/smoke.js
+      - BASE_URL=http://backend_perf:8000
+    command: run /scripts/scenarios/smoke.js --out json=/reports/result.json
     depends_on:
-      - backend
+      - backend_perf
+
+volumes:
+  postgres_perf_data:
 ```
 
 ### `run.sh` — local runner
@@ -132,20 +193,17 @@ services:
 ./run.sh stress                            # local, stress scenario
 ```
 
-Accepts an optional `BASE_URL` argument to target any deployed environment.
+- Accepts an optional `BASE_URL` argument to target any deployed environment
+- **Propagates k6's exit code without modification** — a threshold breach exits non-zero, giving a clear signal before pushing
 
 ### GitHub Actions (`perf.yml`)
 - **Trigger:** PR to main + push to main
 - **Steps:**
-  1. `docker compose up` (postgres + backend)
-  2. `k6 run scenarios/smoke.js --env BASE_URL=http://localhost:8000 --thresholds-file thresholds/ci.json`
-  3. Upload `reports/smoke-result.json` as a build artifact
-  4. Exit non-zero (fail PR) if any threshold is breached
-
-### Reports
-- JSON output → `reports/` (gitignored, not committed)
-- CI artifacts stored per run for trend comparison
-- `handleSummary()` in each scenario generates a human-readable HTML report
+  1. `docker compose -f docker-compose.perf.yml up -d postgres_perf backend_perf`
+  2. Wait for backend health check
+  3. `docker compose -f docker-compose.perf.yml run --env CI=true --env BASE_URL=http://backend_perf:8000 k6 run /scripts/scenarios/smoke.js --out json=/reports/smoke-result.json`
+  4. Upload `reports/smoke-result.json` as a build artifact (`retention-days: 30`)
+  5. Exit non-zero (fail PR) if k6 exits non-zero (threshold breached)
 
 ---
 
