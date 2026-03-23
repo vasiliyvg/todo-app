@@ -35,6 +35,11 @@ export function getToken(baseUrl) {
     'login: has access_token': (r) => r.json('access_token') !== undefined,
   });
 
+  if (loginRes.status !== 200) {
+    // Login failed — leave token as null so next iteration retries
+    return null;
+  }
+
   token = loginRes.json('access_token');
   return token;
 }
