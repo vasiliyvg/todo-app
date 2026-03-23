@@ -31,7 +31,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuth }) => {
   return (
     <div className="auth-container">
       <h2>{mode === 'login' ? 'Log In' : 'Register'}</h2>
-      <form onSubmit={handleSubmit}>
+      <form className="auth-form" onSubmit={handleSubmit}>
         <input
           type="text"
           placeholder="Username"
@@ -50,8 +50,9 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuth }) => {
           {loading ? 'Loading...' : mode === 'login' ? 'Log In' : 'Register'}
         </button>
       </form>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+      {error && <p className="auth-error">{error}</p>}
       <button
+        className="auth-switch-btn"
         type="button"
         onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(null); }}
       >

@@ -91,8 +91,8 @@ const App: React.FC = () => {
 
   return (
     <div className="app-container">
-      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px' }}>
-        <button onClick={() => setToken(null)}>Logout</button>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 0 4px' }}>
+        <button className="logout-btn" onClick={() => setToken(null)}>Logout</button>
       </div>
       <Tabs>
         <TabList>
