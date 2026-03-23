@@ -5,6 +5,7 @@ import { ApiFixture } from '../fixtures/api.fixture';
 import { FRONTEND_URL } from '../test-constants';
 
 const api = new ApiFixture();
+// Note: api and authenticatedPage both operate as TEST_USER — they must stay in sync.
 
 test.describe('Timeline tab', () => {
   test.afterEach(async () => {

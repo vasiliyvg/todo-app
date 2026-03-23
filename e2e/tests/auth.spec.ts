@@ -1,15 +1,12 @@
 // e2e/tests/auth.spec.ts
-import * as path from 'path';
 import { test, expect } from '@playwright/test';
 import { AuthPage } from '../pages/AuthPage';
 import { TodoPage } from '../pages/TodoPage';
 import { FRONTEND_URL } from '../test-constants';
 
-// Unique suffix per test run prevents username collisions when rerunning without DB wipe
-const runId = Date.now();
-
 test.describe('Authentication', () => {
   test('@smoke register a new user and land on todo list', async ({ page }) => {
+    const runId = Date.now(); // inside the test to ensure uniqueness on retry
     const auth = new AuthPage(page);
     const todo = new TodoPage(page);
     await page.goto(FRONTEND_URL);
@@ -45,25 +42,28 @@ test.describe('Authentication', () => {
 
   test('401 from API clears session and shows login screen', async ({ browser }) => {
     // Start authenticated
-    const context = await browser.newContext({
-      storageState: path.join(__dirname, '../.auth/user.json'),
-    });
+    const { AUTH_FILE } = await import('../test-constants');
+    const context = await browser.newContext({ storageState: AUTH_FILE });
     const page = await context.newPage();
     const auth = new AuthPage(page);
-
-    await page.goto(FRONTEND_URL);
-    await auth.expectAuthFormVisible();  // storageState loads sessionStorage, so should be logged in...
-    // Actually: verify we DO see the todo form first
     const todo = new TodoPage(page);
-    await todo.expectFormVisible();
 
-    // Simulate token expiry by clearing sessionStorage (mimics what a 401 does)
-    await page.evaluate(() => sessionStorage.clear());
-    await page.reload();
+    try {
+      await page.goto(FRONTEND_URL);
+      await todo.expectFormVisible();
 
-    // App re-reads token from sessionStorage on mount — it is now null
-    await auth.expectAuthFormVisible();
+      // Intercept the next /todos request and return 401 to simulate token expiry
+      await page.route('**/todos', route =>
+        route.fulfill({ status: 401, body: JSON.stringify({ detail: 'Unauthorized' }) })
+      );
 
-    await context.close();
+      // Reload triggers fetchTodos which hits the intercepted route
+      await page.reload();
+
+      // App's handleUnauthorized clears the token and renders AuthForm
+      await auth.expectAuthFormVisible();
+    } finally {
+      await context.close();
+    }
   });
 });

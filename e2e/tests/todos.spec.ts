@@ -1,6 +1,7 @@
 // e2e/tests/todos.spec.ts
 import { test, expect } from '../fixtures/auth.fixture';
 import { TodoPage } from '../pages/TodoPage';
+import { AuthPage } from '../pages/AuthPage';
 import { ApiFixture } from '../fixtures/api.fixture';
 import { FRONTEND_URL } from '../test-constants';
 
@@ -49,26 +50,23 @@ test.describe('Todo CRUD', () => {
   });
 
   test('User A todos are not visible to User B', async ({ browser }) => {
-    // User A already has todos (seeded via API)
     await api.createTodo('User A secret todo');
 
-    // Register User B (unique username per run)
     const runId = Date.now();
     await api.registerUser(`user-b-${runId}`, 'passwordB');
 
-    // Log in as User B via a fresh browser context (no storageState)
     const contextB = await browser.newContext();
-    const pageB = await contextB.newPage();
+    try {
+      const pageB = await contextB.newPage();
+      const authB = new AuthPage(pageB);
+      await pageB.goto(FRONTEND_URL);
+      await authB.login(`user-b-${runId}`, 'passwordB');
+      await pageB.getByPlaceholder('Add a new task...').waitFor();
 
-    await pageB.goto(FRONTEND_URL);
-    await pageB.getByPlaceholder('Username').fill(`user-b-${runId}`);
-    await pageB.getByPlaceholder('Password').fill('passwordB');
-    await pageB.getByRole('button', { name: 'Log In' }).click();
-    await pageB.getByPlaceholder('Add a new task...').waitFor();
-
-    // User A's todo must not appear in User B's view
-    await expect(pageB.locator('.todo-item')).toHaveCount(0);
-
-    await contextB.close();
+      // User A's todo must not appear in User B's view
+      await expect(pageB.locator('.todo-item')).toHaveCount(0);
+    } finally {
+      await contextB.close();
+    }
   });
 });

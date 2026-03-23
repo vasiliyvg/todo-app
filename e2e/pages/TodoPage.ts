@@ -35,7 +35,7 @@ export class TodoPage {
   }
 
   async expectTodoNotVisible(text: string) {
-    await expect(this.todoRow(text)).not.toBeVisible();
+    await expect(this.todoRow(text)).not.toBeAttached();
   }
 
   async expectCompleted(text: string) {
