@@ -4,10 +4,9 @@ from typing import List
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 
-from sqlalchemy.ext.asyncio import AsyncConnection
-
 from models import Todo, TodoCreate, TodoUpdate
-from database import engine, todos, create_db_and_tables
+from database import engine, todos, create_db_and_tables, get_db_conn
+from sqlalchemy.ext.asyncio import AsyncConnection
 
 
 @asynccontextmanager
@@ -25,11 +24,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-async def get_db_conn() -> AsyncConnection:
-    async with engine.connect() as connection:
-        yield connection
 
 
 @app.get("/")

@@ -1,3 +1,4 @@
+from typing import AsyncGenerator
 from sqlalchemy import (
     MetaData,
     Table,
@@ -7,7 +8,7 @@ from sqlalchemy import (
     Boolean,
     DateTime,
 )
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncConnection
 from datetime import datetime, timezone
 from settings import settings
 
@@ -24,6 +25,11 @@ todos = Table(
     Column("updated_at", DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False),
     Column("type", String, default="todo", nullable=False),
 )
+
+async def get_db_conn() -> AsyncGenerator[AsyncConnection, None]:
+    async with engine.connect() as connection:
+        yield connection
+
 
 async def create_db_and_tables():
     async with engine.begin() as conn:

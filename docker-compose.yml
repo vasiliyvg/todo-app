@@ -1,13 +1,10 @@
 services:
   postgres:
     image: postgres:13
-    container_name: todo-postgres
     environment:
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=tododb
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -20,7 +17,6 @@ services:
   backend:
     build:
       context: ./backend
-    container_name: todo-backend
     ports:
       - "8000:8000"
     volumes:
@@ -29,6 +25,7 @@ services:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app
       - DATABASE_URL=postgresql+asyncpg://user:password@postgres/tododb
+      - SECRET_KEY=dev-secret-key-change-in-production
     depends_on:
       postgres:
         condition: service_healthy
@@ -38,7 +35,6 @@ services:
     build:
       context: ./frontend
       target: development
-    container_name: todo-frontend
     ports:
       - "3000:3000"
     volumes:
