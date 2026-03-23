@@ -56,6 +56,23 @@ describe('addTodo', () => {
     mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
     await expect(addTodo('Test', TOKEN)).rejects.toThrow('Failed to add todo');
   });
+
+  test('sends custom type in request body', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true, status: 201, json: async () => mockTodo });
+    await addTodo('Test', TOKEN, undefined, 'timeline');
+    expect(mockFetch).toHaveBeenCalledWith('http://127.0.0.1:8000/todos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...AUTH_HEADER },
+      body: JSON.stringify({ title: 'Test', type: 'timeline' }),
+    });
+  });
+
+  test('calls onUnauthorized and throws on 401', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 401 });
+    const onUnauthorized = jest.fn();
+    await expect(addTodo('Test', TOKEN, onUnauthorized)).rejects.toThrow('Failed to add todo');
+    expect(onUnauthorized).toHaveBeenCalled();
+  });
 });
 
 describe('updateTodo', () => {
