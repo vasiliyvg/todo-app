@@ -35,6 +35,7 @@ const loginAndRender = async (todosResult: Todo[] = []) => {
 describe('App Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    sessionStorage.clear(); // prevent token bleed-through between tests
   });
 
   test('shows AuthForm when not authenticated', () => {

@@ -10,12 +10,20 @@ import 'react-tabs/style/react-tabs.css';
 import './App.css';
 
 const App: React.FC = () => {
-  const [token, setToken] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(sessionStorage.getItem('token'));
   const [todos, setTodos] = useState<Todo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleUnauthorized = () => setToken(null);
+  const handleUnauthorized = () => {
+    sessionStorage.removeItem('token');
+    setToken(null);
+  };
+
+  const handleAuth = (t: string) => {
+    sessionStorage.setItem('token', t);
+    setToken(t);
+  };
 
   useEffect(() => {
     if (token) fetchTodos();
@@ -35,10 +43,10 @@ const App: React.FC = () => {
     }
   };
 
-  const addTodo = async (text: string) => {
+  const addTodo = async (text: string, type: string = 'todo') => {
     if (!token) return;
     try {
-      const newTodo = await api.addTodo(text, token, handleUnauthorized);
+      const newTodo = await api.addTodo(text, token, handleUnauthorized, type);
       setTodos((prevTodos) => [...prevTodos, newTodo]);
     } catch (err) {
       setError('Failed to add todo.');
@@ -74,7 +82,7 @@ const App: React.FC = () => {
   };
 
   if (!token) {
-    return <AuthForm onAuth={setToken} />;
+    return <AuthForm onAuth={handleAuth} />;
   }
 
   if (loading) {
@@ -92,7 +100,7 @@ const App: React.FC = () => {
   return (
     <div className="app-container">
       <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 0 4px' }}>
-        <button className="logout-btn" onClick={() => setToken(null)}>Logout</button>
+        <button className="logout-btn" onClick={() => { sessionStorage.removeItem('token'); setToken(null); }}>Logout</button>
       </div>
       <Tabs>
         <TabList>
