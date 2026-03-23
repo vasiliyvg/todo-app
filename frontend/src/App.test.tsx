@@ -102,6 +102,7 @@ describe('App Component', () => {
     await waitFor(() => {
       expect(screen.getByText('New Todo')).toBeInTheDocument();
     });
+    expect(api.addTodo).toHaveBeenCalledWith('New Todo', 'test-token', expect.any(Function), 'todo');
   });
 
   test('toggles todo completion', async () => {
