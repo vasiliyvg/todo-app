@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { AuthPage } from '../pages/AuthPage';
 import { TodoPage } from '../pages/TodoPage';
-import { FRONTEND_URL } from '../test-constants';
+import { FRONTEND_URL, TEST_USER } from '../test-constants';
 
 test.describe('Authentication', () => {
   test('@smoke register a new user and land on todo list', async ({ page }) => {
@@ -19,14 +19,14 @@ test.describe('Authentication', () => {
     const todo = new TodoPage(page);
     await page.goto(FRONTEND_URL);
     // Use the pre-created e2e test user (exists from global-setup)
-    await auth.login('e2e-testuser', 'e2e-password-42');
+    await auth.login(TEST_USER.username, TEST_USER.password);
     await todo.expectFormVisible();
   });
 
   test('login with wrong password shows error', async ({ page }) => {
     const auth = new AuthPage(page);
     await page.goto(FRONTEND_URL);
-    await auth.login('e2e-testuser', 'wrongpassword');
+    await auth.login(TEST_USER.username, 'wrongpassword');
     await auth.expectError('Invalid credentials');
   });
 
@@ -34,16 +34,23 @@ test.describe('Authentication', () => {
     const auth = new AuthPage(page);
     const todo = new TodoPage(page);
     await page.goto(FRONTEND_URL);
-    await auth.login('e2e-testuser', 'e2e-password-42');
+    await auth.login(TEST_USER.username, TEST_USER.password);
     await todo.expectFormVisible();
     await todo.logout();
     await auth.expectAuthFormVisible();
   });
 
   test('401 from API clears session and shows login screen', async ({ browser }) => {
-    // Start authenticated
-    const { AUTH_FILE } = await import('../test-constants');
-    const context = await browser.newContext({ storageState: AUTH_FILE });
+    // Start authenticated — inject token into sessionStorage since app uses sessionStorage
+    const { BACKEND_URL, TEST_USER } = await import('../test-constants');
+    const loginRes = await fetch(`${BACKEND_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ username: TEST_USER.username, password: TEST_USER.password }),
+    });
+    const { access_token } = await loginRes.json();
+    const context = await browser.newContext();
+    await context.addInitScript((t: string) => { sessionStorage.setItem('token', t); }, access_token);
     const page = await context.newPage();
     const auth = new AuthPage(page);
     const todo = new TodoPage(page);
