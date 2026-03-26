@@ -39,6 +39,10 @@ export default function () {
     'POST /todos: completed is false': (r) => r.json('completed') === false,
   });
 
+  if (createRes.status !== 201) {
+    return;
+  }
+
   const todoId = createRes.json('id');
 
   // PUT /todos/{id}
@@ -46,6 +50,7 @@ export default function () {
   check(updateRes, {
     'PUT /todos/{id}: status 200': (r) => r.status === 200,
     'PUT /todos/{id}: completed is true': (r) => r.json('completed') === true,
+    'PUT /todos/{id}: title updated': (r) => r.json('title') === `${payload.title}-updated`,
   });
 
   // DELETE /todos/{id}
