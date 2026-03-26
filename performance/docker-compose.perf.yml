@@ -1,0 +1,49 @@
+services:
+  postgres_perf:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=tododb_perf
+    volumes:
+      - postgres_perf_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d tododb_perf"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  backend_perf:
+    build:
+      context: ../backend
+    ports:
+      - "8001:8000"
+    volumes:
+      - ../backend:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
+      - DATABASE_URL=postgresql+asyncpg://user:password@postgres_perf/tododb_perf
+      - SECRET_KEY=perf-test-secret-key-not-for-production
+      - ACCESS_TOKEN_EXPIRE_MINUTES=120
+    depends_on:
+      postgres_perf:
+        condition: service_healthy
+    restart: unless-stopped
+
+  k6:
+    image: grafana/k6:0.54.0
+    volumes:
+      - ./:/scripts
+      - ./reports:/reports
+    environment:
+      - BASE_URL=http://backend_perf:8000
+    command: run /scripts/scenarios/smoke.js --out json=/reports/result.json
+    depends_on:
+      - backend_perf
+    networks:
+      - default
+
+volumes:
+  postgres_perf_data:
