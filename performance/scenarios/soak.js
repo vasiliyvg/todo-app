@@ -35,6 +35,7 @@ export default function () {
     return;
   }
 
+  // PUT omitted intentionally — soak tests reads/writes only to reduce write amplification over 30 minutes
   const todoId = createRes.json('id');
 
   const deleteRes = client.del(`/todos/${todoId}`);

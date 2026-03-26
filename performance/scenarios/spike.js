@@ -33,6 +33,6 @@ export default function () {
 
   if (createRes.status === 201) {
     const todoId = createRes.json('id');
-    client.del(`/todos/${todoId}`);
+    client.del(`/todos/${todoId}`); // cleanup is best-effort during spike; result not checked
   }
 }

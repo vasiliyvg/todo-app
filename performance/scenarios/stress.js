@@ -18,6 +18,7 @@ export const options = {
     http_req_failed:   ['rate<0.10'],
     checks:            ['rate>0.90'],
   },
+  // http_req_failed and checks are fixed — stress thresholds are intentionally lenient regardless of CI
 };
 
 export default function () {
