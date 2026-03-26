@@ -56,7 +56,7 @@ export class ApiFixture {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!deleteRes.ok) {
+      if (!deleteRes.ok && deleteRes.status !== 404) {
         throw new Error(`clearTodos delete ${todo.id} failed: ${deleteRes.status}`);
       }
     }
