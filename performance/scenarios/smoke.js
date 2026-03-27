@@ -1,5 +1,4 @@
 import { check } from 'k6';
-import { htmlReport } from 'https://raw.githubusercontent.com/grafana/k6-reporter/main/dist/bundle.js';
 import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.1/index.js';
 import { getToken } from '../lib/auth.js';
 import { makeClient } from '../lib/client.js';
@@ -62,7 +61,6 @@ export default function () {
 
 export function handleSummary(data) {
   return {
-    'reports/smoke-summary.html': htmlReport(data),
     stdout: textSummary(data, { indent: ' ', enableColors: true }),
   };
 }
