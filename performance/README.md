@@ -51,7 +51,6 @@ If you don't prune, repeated runs reuse existing test users (the auth library ha
 
 Reports are written to `performance/reports/` (gitignored).
 - `*.json` — raw k6 metrics (machine-readable)
-- `*.html` — human-readable summary (smoke scenario only)
 
 ## CI
 
