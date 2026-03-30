@@ -1,10 +1,7 @@
-// e2e/global-setup.ts
-import { chromium, FullConfig } from '@playwright/test';
-import * as fs from 'fs';
+import { FullConfig } from '@playwright/test';
 import * as path from 'path';
 import { TEST_USER, BACKEND_URL, FRONTEND_URL } from './test-constants';
 
-const AUTH_FILE = path.join(__dirname, '.auth/user.json');
 const POLL_INTERVAL_MS = 2000;
 const TIMEOUT_MS = 60_000;
 
@@ -37,32 +34,8 @@ async function ensureTestUserExists(): Promise<void> {
 }
 
 export default async function globalSetup(_config: FullConfig) {
-  // 1. Wait for both services to be healthy
   await waitForService(`${BACKEND_URL}/`, 'backend');
   await waitForService(FRONTEND_URL, 'frontend');
-
-  // 2. Ensure the test user exists in the DB
   await ensureTestUserExists();
-
-  // 3. Log in via the UI and save storageState (captures sessionStorage with token)
-  fs.mkdirSync(path.dirname(AUTH_FILE), { recursive: true });
-
-  const browser = await chromium.launch();
-  try {
-    const context = await browser.newContext();
-    const page = await context.newPage();
-
-    await page.goto(FRONTEND_URL);
-    await page.getByPlaceholder('Username').fill(TEST_USER.username);
-    await page.getByPlaceholder('Password').fill(TEST_USER.password);
-    await page.getByRole('button', { name: 'Log In' }).click();
-
-    await page.getByPlaceholder('Add a new task...').waitFor({ timeout: 15_000 });
-
-    await context.storageState({ path: AUTH_FILE });
-  } finally {
-    await browser.close();
-  }
-
-  console.log('[global-setup] storageState saved to', AUTH_FILE);
+  console.log('[global-setup] services ready, test user ensured');
 }
