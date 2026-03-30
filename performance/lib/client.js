@@ -21,9 +21,15 @@ export function makeClient(baseUrl, token) {
       http.post(`${baseUrl}${path}`, JSON.stringify(body), { headers }),
 
     put: (path, body) =>
-      http.put(`${baseUrl}${path}`, JSON.stringify(body), { headers }),
+      http.put(`${baseUrl}${path}`, JSON.stringify(body), {
+        headers,
+        tags: { name: path.replace(/\/\d+/, '/:id') },
+      }),
 
     del: (path) =>
-      http.del(`${baseUrl}${path}`, null, { headers }),
+      http.del(`${baseUrl}${path}`, null, {
+        headers,
+        tags: { name: path.replace(/\/\d+/, '/:id') },
+      }),
   };
 }
