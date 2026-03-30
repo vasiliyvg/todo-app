@@ -34,6 +34,9 @@ jobs:
             sleep 2
           done
 
+      - name: Prepare reports directory
+        run: mkdir -p performance/reports && chmod 777 performance/reports
+
       - name: Run smoke test
         run: |
           docker compose -f performance/docker-compose.perf.yml run --rm \
